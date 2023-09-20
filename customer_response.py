@@ -10,18 +10,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def load_data():
-    loader = CSVLoader(file_path="sales_response_data.csv")
+    loader = CSVLoader(file_path="customer_response_data.csv")
     return loader.load()
 
+
 def create_embeddings(documents):
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", model_kwargs={'device': "cpu"})
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        model_kwargs={"device": "cpu"},
+    )
     return FAISS.from_documents(documents, embeddings)
+
 
 def retrieve_info(query, db):
     similar_response = db.similarity_search(query, k=3)
     page_contents = [doc.page_content for doc in similar_response]
     return page_contents
+
 
 def create_prompt_template():
     template = """
@@ -44,25 +51,30 @@ def create_prompt_template():
 
     please write the best response that I should send to this prospect:
     """
-    return PromptTemplate(input_variables=['message', 'prospect_responses'], template=template)
+    return PromptTemplate(
+        input_variables=["message", "prospect_responses"], template=template
+    )
+
 
 def create_llm_chain():
     llm = Replicate(
         model="replicate/llama-2-70b-chat:58d078176e02c219e11eb4da5a02a7830a283b14cf8f94537af893ccff5ee781",
-        input={"temperature": 0.01, "max_length": 500, "top_p": 1}
+        input={"temperature": 0.01, "max_length": 500, "top_p": 1},
     )
-    #llm = CTransformers(
-        #model = "llama-2-7b-chat.ggmlv3.q4_0.bin",
-       #model_type="llama",
-       #max_new_tokens = 512,
-    #temperature = 0.5)
-    
+    # llm = CTransformers(
+    # model = "llama-2-7b-chat.ggmlv3.q4_0.bin",
+    # model_type="llama",
+    # max_new_tokens = 512,
+    # temperature = 0.5)
+
     prompt = create_prompt_template()
     return LLMChain(llm=llm, prompt=prompt)
+
 
 def generate_response(message, db, chain):
     prospect_responses = retrieve_info(message, db)
     return chain.run(message=message, prospect_responses=prospect_responses)
+
 
 def main():
     st.header("Customer Response Generator :books:")
@@ -78,5 +90,6 @@ def main():
             result = generate_response(message, db, chain)
             response.info(result)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
